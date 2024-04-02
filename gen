@@ -20,7 +20,7 @@ gen_random() {
 }
 
 gen_context() {
-    value=$1
+    local value=$1
 
     echo "cleaning up $app_dir/output"
     local context_dir="$app_dir/output"
@@ -34,8 +34,8 @@ gen_context() {
 }
 
 docker_build() {
-    output_path=$1
-    value=$2
+    local output_path=$1
+    local value=$2
 
     cd $app_dir
     echo "docker context path: $(pwd)"
@@ -47,27 +47,29 @@ docker_build() {
         --output type=docker,push=false,rewrite-timestamp=true,dest=$output_path,name=$value \
         --local context=. \
         --local dockerfile=. \
-        --opt filename=Dockerfile
+        --opt filename=Dockerfile \
         --opt build-arg:SOURCE_DATE_EPOCH=0
 }
 
 
+run() {
+    local digit=$1
+    local random=$(gen_random $digit)
+
+    gen_context $random
+    docker_build $root_path/$random.tar $random
+
+    # docker load and run
+    docker load -i $root_path/$random.tar && docker run $random
+}
+
+
+digit=$1
 
 # first build
 echo "--------- first build ---------"
-random=$(gen_random 3)
-gen_context $random
-docker_build $root_path/$random.tar $random
-
-# docker load and run
-docker load -i $root_path/$random.tar && docker run $random
+run $digit  
 
 # second build
 echo "--------- second build ---------"
-random=$(gen_random 4)
-gen_context $random
-docker_build $root_path/$random.tar $random
-
-# docker load and run
-docker load -i $root_path/$random.tar && docker run $random
-
+run $digit

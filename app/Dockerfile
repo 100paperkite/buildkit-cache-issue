@@ -6,4 +6,4 @@ WORKDIR /app
 
 COPY output/ .
 
-CMD ls -l && echo "Contents in same: $(cat same)"
+CMD ls -l && [ -f "$(cat same)" ] && echo "equal" || echo "not equal. $(cat same) value in 'same' file."
