@@ -1,0 +1,73 @@
+#!/bin/bash
+
+root_path=$(pwd)
+app_dir="$root_path/app"
+
+gen_random() {
+    # gen random digits if not provided
+    if [ -z $1 ]; then
+        digits=$((1 + RANDOM % 6))
+    else
+        digits=$1
+    fi
+
+    local number=""
+    for (( i=0; i<$digits; i++ )); do
+        number="${number}$((RANDOM % 10))"
+    done
+
+    echo $number
+}
+
+gen_context() {
+    value=$1
+
+    echo "cleaning up $app_dir/output"
+    local context_dir="$app_dir/output"
+    rm -rf $context_dir
+    mkdir -p $context_dir
+
+    echo $value > $context_dir/same
+    echo $value > $context_dir/$value
+
+    echo "generated output: $value"
+}
+
+docker_build() {
+    output_path=$1
+    value=$2
+
+    cd $app_dir
+    echo "docker context path: $(pwd)"
+
+    find . -exec touch --no-dereference -t 197001010000.00 {} +
+    buildctl build \
+        --opt platform=linux/amd64 \
+        --frontend dockerfile.v0 \
+        --output type=docker,push=false,rewrite-timestamp=true,dest=$output_path,name=$value \
+        --local context=. \
+        --local dockerfile=. \
+        --opt filename=Dockerfile
+        --opt build-arg:SOURCE_DATE_EPOCH=0
+}
+
+
+
+# first build
+echo "--------- first build ---------"
+random=$(gen_random 3)
+gen_context $random
+docker_build $root_path/$random.tar $random
+
+# docker load and run
+docker load -i $root_path/$random.tar && docker run $random
+
+# second build
+echo "--------- second build ---------"
+random=$(gen_random 4)
+gen_context $random
+docker_build $root_path/$random.tar $random
+
+# docker load and run
+docker load -i $root_path/$random.tar && docker run $random
+
